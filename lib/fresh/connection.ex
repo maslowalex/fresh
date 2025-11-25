@@ -20,6 +20,7 @@ defmodule Fresh.Connection do
     :response_status,
     :response_headers,
     :response_queue,
+    :frame_queue,
     :backoff_time
   ]
 
@@ -43,6 +44,7 @@ defmodule Fresh.Connection do
       default_state: state,
       inner_state: state,
       response_queue: [],
+      frame_queue: [],
       backoff_time: Option.backoff_initial(opts)
     }
 
@@ -182,6 +184,7 @@ defmodule Fresh.Connection do
         |> data.module.handle_connect(data.response_headers, data.inner_state)
         |> handle_generic_callback(data)
         |> handle_response_queue()
+        |> handle_frame_queue()
         |> struct(backoff_time: Option.backoff_initial(data.opts))
 
       {:error, conn, reason} ->
@@ -215,6 +218,10 @@ defmodule Fresh.Connection do
 
   defp send_frame(frames, data) when is_list(frames) do
     Enum.reduce(frames, data, &send_frame/2)
+  end
+
+  defp send_frame(frame, %__MODULE__{websocket: nil, frame_queue: frame_queue} = data) do
+    %__MODULE__{data | frame_queue: [frame | frame_queue]}
   end
 
   defp send_frame(frame, data) do
@@ -263,6 +270,12 @@ defmodule Fresh.Connection do
     frame
     |> data.module.handle_in(data.inner_state)
     |> handle_generic_callback(data)
+  end
+
+  defp handle_frame_queue(%__MODULE__{frame_queue: []} = data), do: data
+
+  defp handle_frame_queue(%__MODULE__{frame_queue: [frame | rest]} = data) do
+    %{handle_frame(frame, data) | frame_queue: rest}
   end
 
   ### ===============================================================
