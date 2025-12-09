@@ -66,7 +66,7 @@ defmodule Fresh.Connection do
     :keep_state_and_data
   end
 
-  def disconnected(:internal, :connect, data) do
+  def disconnected(:internal, :connect, %__MODULE__{} = data) do
     uri = URI.parse(data.uri)
 
     {http_scheme, ws_scheme} =
@@ -123,7 +123,7 @@ defmodule Fresh.Connection do
     |> data_to_event()
   end
 
-  def connected(:info, message, data) do
+  def connected(:info, message, %__MODULE__{} = data) do
     case Mint.WebSocket.stream(data.connection, message) do
       {:ok, conn, responses} ->
         responses
@@ -165,15 +165,15 @@ defmodule Fresh.Connection do
   ###
   ### ===============================================================
 
-  defp handle_response({:status, _ref, status}, data) do
+  defp handle_response({:status, _ref, status}, %__MODULE__{} = data) do
     %__MODULE__{data | response_status: status}
   end
 
-  defp handle_response({:headers, _ref, headers}, data) do
+  defp handle_response({:headers, _ref, headers}, %__MODULE__{} = data) do
     %__MODULE__{data | response_headers: headers}
   end
 
-  defp handle_response({:done, ref}, data) do
+  defp handle_response({:done, ref}, %__MODULE__{} = data) do
     case Mint.WebSocket.new(data.connection, ref, data.response_status, data.response_headers) do
       {:ok, conn, websocket} ->
         log(:info, :established, nil, data.opts)
@@ -196,7 +196,7 @@ defmodule Fresh.Connection do
     handle_error({:processing_failed, reason}, data)
   end
 
-  defp handle_response({:data, _ref, message}, data) do
+  defp handle_response({:data, _ref, message}, %__MODULE__{} = data) do
     if data.websocket != nil do
       case Mint.WebSocket.decode(data.websocket, message) do
         {:ok, websocket, frames} ->
@@ -224,9 +224,9 @@ defmodule Fresh.Connection do
     %__MODULE__{data | frame_queue: [frame | frame_queue]}
   end
 
-  defp send_frame(frame, data) do
+  defp send_frame(frame, %__MODULE__{} = data) do
     with {:ok, websocket, frame_data} <- Mint.WebSocket.encode(data.websocket, frame),
-         data = %__MODULE__{data | websocket: websocket},
+         %__MODULE__{} = data <- %__MODULE__{data | websocket: websocket},
          {:ok, conn} <-
            Mint.WebSocket.stream_request_body(data.connection, data.request_ref, frame_data) do
       %__MODULE__{data | connection: conn}
@@ -284,7 +284,7 @@ defmodule Fresh.Connection do
   ###
   ### ===============================================================
 
-  defp handle_generic_callback({:ok, inner_state}, data) do
+  defp handle_generic_callback({:ok, inner_state}, %__MODULE__{} = data) do
     %__MODULE__{data | inner_state: inner_state}
   end
 
@@ -315,27 +315,27 @@ defmodule Fresh.Connection do
 
   defp handle_connection_callback(error, data, additional \\ [])
 
-  defp handle_connection_callback({:ignore, inner_state}, data, additional) do
+  defp handle_connection_callback({:ignore, inner_state}, %__MODULE__{} = data, additional) do
     %__MODULE__{data | inner_state: inner_state, reconnect: nil}
     |> struct(additional)
   end
 
-  defp handle_connection_callback({:reconnect, inner_state}, data, additional) do
+  defp handle_connection_callback({:reconnect, inner_state}, %__MODULE__{} = data, additional) do
     %__MODULE__{data | default_state: inner_state, reconnect: true}
     |> struct(additional)
   end
 
-  defp handle_connection_callback(:reconnect, data, additional) do
+  defp handle_connection_callback(:reconnect, %__MODULE__{} = data, additional) do
     %__MODULE__{data | reconnect: true}
     |> struct(additional)
   end
 
-  defp handle_connection_callback(:close, data, additional) do
+  defp handle_connection_callback(:close, %__MODULE__{} = data, additional) do
     %__MODULE__{data | reconnect: false}
     |> struct(additional)
   end
 
-  defp handle_connection_callback({:close, reason}, data, additional) do
+  defp handle_connection_callback({:close, reason}, %__MODULE__{} = data, additional) do
     %__MODULE__{data | reconnect: {false, reason}}
     |> struct(additional)
   end
@@ -369,7 +369,7 @@ defmodule Fresh.Connection do
   ### ===============================================================
 
   defp handle_response_queue(%__MODULE__{response_queue: [head | tail]} = data) do
-    data = handle_response({:data, :fake_ref, head}, data)
+    %__MODULE__{} = data = handle_response({:data, :fake_ref, head}, data)
     handle_response_queue(%__MODULE__{data | response_queue: tail})
   end
 

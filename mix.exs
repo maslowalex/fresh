@@ -16,12 +16,6 @@ defmodule Fresh.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
       test_coverage: [tool: ExCoveralls],
-      preferred_cli_env: [
-        coveralls: :test,
-        "coveralls.github": :test,
-        "coveralls.html": :test,
-        docs: :dev
-      ],
 
       # Package
       package: package(),
@@ -47,8 +41,8 @@ defmodule Fresh.MixProject do
     ]
   end
 
-  defp elixirc_paths(:test), do: [~c"lib", ~c"test/support"]
-  defp elixirc_paths(_), do: [~c"lib"]
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
 
   def application do
     [
