@@ -118,7 +118,7 @@ defmodule Fresh.Connection do
   end
 
   def connected(:info, :ping, data) do
-    {:ping, <<>>}
+    {:ping, data.module.format_ping(data.inner_state)}
     |> send_frame(data)
     |> data_to_event()
   end
@@ -272,10 +272,10 @@ defmodule Fresh.Connection do
     |> handle_generic_callback(data)
   end
 
-  defp handle_frame_queue(%__MODULE__{frame_queue: []} = data), do: data
+  defp handle_frame_queue(%__MODULE__{frame_queue: queue} = data) when queue in [nil, []], do: data
 
-  defp handle_frame_queue(%__MODULE__{frame_queue: [frame | rest]} = data) do
-    %{handle_frame(frame, data) | frame_queue: rest}
+  defp handle_frame_queue(%__MODULE__{frame_queue: frame_queue} = data) do
+    Enum.reduce(Enum.reverse(frame_queue), %__MODULE__{data | frame_queue: []}, &send_frame/2)
   end
 
   ### ===============================================================

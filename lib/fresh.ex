@@ -281,6 +281,13 @@ defmodule Fresh do
   @callback handle_terminate(reason :: any(), state()) :: ignored :: any()
 
   @doc """
+  Callback invoked when the ping is about to be sent to the server.
+
+  It allows for the formating of the ping message.
+  """
+  @callback format_ping(state()) :: binary()
+
+  @doc """
   This macro simplifies the implementation of WebSocket client.
 
   It automatically configures `child_spec/1`, `start/1` and `start_link/1` for the module, and provides handlers for all required callbacks, which can be overridden.
@@ -342,6 +349,9 @@ defmodule Fresh do
       @doc false
       def handle_terminate(_reason, _state), do: :ok
 
+      @doc false
+      def format_ping(_state), do: <<>>
+
       defoverridable child_spec: 1,
                      start_link: 1,
                      handle_connect: 3,
@@ -350,7 +360,8 @@ defmodule Fresh do
                      handle_info: 2,
                      handle_error: 2,
                      handle_disconnect: 3,
-                     handle_terminate: 2
+                     handle_terminate: 2,
+                     format_ping: 1
     end
   end
 
