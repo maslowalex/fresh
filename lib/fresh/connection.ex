@@ -400,6 +400,7 @@ defmodule Fresh.Connection do
       default_state: data.default_state,
       inner_state: data.default_state,
       response_queue: [],
+      frame_queue: [],
       backoff_time: round(backoff_time * 1.5)
     }
 

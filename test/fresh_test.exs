@@ -142,4 +142,43 @@ defmodule FreshTest do
       assert_receive {:control, {:ping, ""}}, 10_000
     end
   end
+
+  describe "Reconnect with Queued Frame:" do
+    setup do
+      # /slow_websocket delays the handshake, and a tight ping_interval guarantees
+      # several pings are queued during the connected-but-not-yet-handshaked window.
+      state = [
+        welcome: "hi!",
+        pid: self(),
+        opts: [error_logging: false, info_logging: false, ping_interval: 5]
+      ]
+
+      {:ok, pid} =
+        TestClient.start(
+          uri: "ws://localhost:8080/slow_websocket",
+          state: state,
+          opts: state[:opts]
+        )
+
+      assert_receive {:data, {:text, "hi!"}}, 5_000
+      [pid: pid]
+    end
+
+    # Regression: reconnect/1 used to omit frame_queue, leaving it nil. Pings
+    # queued before the new websocket handshake completed produced an improper
+    # list [{:ping, ""} | nil], and the :done flush crashed in Enum.reverse/1.
+    test "survives pings queued during the reconnect window", %{pid: pid} do
+      Fresh.close(pid, 1002, "")
+
+      assert_receive {:close, 1000, ""}
+
+      # Reconnect succeeds and handle_connect re-sends the welcome frame,
+      # proving the connection process flushed its queue without crashing.
+      assert_receive {:data, {:text, "hi!"}}, 5_000
+
+      # The process is still alive and serving traffic afterwards.
+      Fresh.send(pid, {:text, "still alive"})
+      assert_receive {:data, {:text, "still alive"}}, 5_000
+    end
+  end
 end
